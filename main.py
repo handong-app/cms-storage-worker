@@ -1,12 +1,7 @@
-import logging
 from fastapi import FastAPI
+from app.util.logging_utils import setup_logging
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
+setup_logging(level="info")
 
 app = FastAPI(title="CMS Storage Server API")
 
