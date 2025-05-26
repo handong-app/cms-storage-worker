@@ -1,0 +1,16 @@
+meta {
+  name: download
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://127.0.0.1:8000/api/v1/presigned/download?filename=freetalk_7578105_20250417150128_a8b2927e6e1d1231.jpg&expires_in=300
+  body: none
+  auth: inherit
+}
+
+params:query {
+  filename: freetalk_7578105_20250417150128_a8b2927e6e1d1231.jpg
+  expires_in: 300
+}
