@@ -2,6 +2,7 @@ import subprocess
 import shutil
 import os
 import re
+import textwrap
 
 from src.core.s3 import s3, BUCKET_NAME
 from src.utils.logging_utils import setup_logger
@@ -110,13 +111,13 @@ def transcode_video(filename: str) -> dict:
 
         logger.info("🎞️ FFmpeg to HLS conversion complete")
 
-
-        master_m3u8 = """#EXTM3U
-        #EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=854x480
-        480p/output.m3u8
-        #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
-        1080p/output.m3u8
-        """
+        master_m3u8 = textwrap.dedent("""\
+            #EXTM3U
+            #EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=854x480
+            480p/output.m3u8
+            #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
+            1080p/output.m3u8
+        """)
 
         with open(os.path.join(output_dir, "master.m3u8"), "w") as f:
             f.write(master_m3u8)
