@@ -45,7 +45,7 @@ def transcode_video(filename: str) -> dict:
         filename (str): S3의 원본 영상 경로 (예: original/1234-abc.mp4)
 
     Returns:
-        dict: 트랜스코딩 완료 정보 (videoId, m3u8 위치, 상태, 진행률)
+        void
     """
 
     logger.info(f"[Logic] Starting transcoding: {filename}")
