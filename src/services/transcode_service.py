@@ -149,12 +149,12 @@ def transcode_video(filename: str) -> dict:
 
         success = True
 
-        # return {
-        #     "videoId": video_id,
-        #     "m3u8": f"{s3_prefix}master.m3u8",
-        #     "status": "success",
-        #     "progress": 100
-        # }
+        return {
+            "videoId": video_id,
+            "m3u8": f"{s3_prefix}master.m3u8",
+            "status": "success",
+            "progress": 100
+        }
 
     except Exception as e:
         if not locals().get("success"):

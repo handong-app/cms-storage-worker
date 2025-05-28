@@ -8,4 +8,4 @@ logger = setup_logger(__name__)
 @celery_app.task(name="transcode_video_task")
 def transcode_video_task(filename: str):
     logger.info(f"[Task] Task received for filename: {filename}")
-    transcode_video(filename)
+    return transcode_video(filename)
