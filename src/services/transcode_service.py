@@ -56,7 +56,8 @@ def transcode_video(filename: str) -> dict:
 
     input_path = os.path.join(tmp_dir, filename.rsplit("/", 1)[-1])
     output_dir = os.path.join(tmp_dir, "hls")
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "480p"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "1080p"), exist_ok=True)
 
     # send_status(video_id, "in_progress", 0)
     publish_progress(video_id, "in_progress", 0)
@@ -74,12 +75,18 @@ def transcode_video(filename: str) -> dict:
         # FFmpeg HLS 변환
         output_m3u8 = os.path.join(output_dir, "output.m3u8")
         ffmpeg_cmd = [
-            "ffmpeg", "-y",  # 덮어쓰기 허용
-            "-i", input_path,
-            "-profile:v", "baseline", "-level", "3.0",
-            "-start_number", "0",
-            "-hls_time", "10", "-hls_list_size", "0", "-f", "hls",
-            output_m3u8
+            "ffmpeg", "-y", "-i", input_path,
+            "-filter_complex", "[0:v]split=2[v1][v2];[v1]scale=w=854:h=480[v1out];[v2]scale=w=1920:h=1080[v2out]",
+            "-map", "[v1out]", "-c:v:0", "libx264", "-b:v:0", "1400k",
+            "-map", "a:0", "-c:a:0", "aac",
+            "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
+            "-hls_segment_filename", os.path.join(output_dir, "480p", "segment_%03d.ts"),
+            os.path.join(output_dir, "480p", "output.m3u8"),
+            "-map", "[v2out]", "-c:v:1", "libx264", "-b:v:1", "5000k",
+            "-map", "a:0", "-c:a:1", "aac",
+            "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
+            "-hls_segment_filename", os.path.join(output_dir, "1080p", "segment_%03d.ts"),
+            os.path.join(output_dir, "1080p", "output.m3u8")
         ]
 
         # Popen 으로 진행률 트래킹
@@ -105,17 +112,30 @@ def transcode_video(filename: str) -> dict:
 
         logger.info("🎞️ FFmpeg to HLS conversion complete")
 
+
+        master_m3u8 = """#EXTM3U
+        #EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=854x480
+        480p/output.m3u8
+        #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
+        1080p/output.m3u8
+        """
+
+        with open(os.path.join(output_dir, "master.m3u8"), "w") as f:
+            f.write(master_m3u8)
+
+
         # S3에 청크들 업로드
         s3_prefix = f"hls/{video_id}/"
         for root, _, files in os.walk(output_dir):
             for file in files:
                 local_path = os.path.join(root, file)
-                s3_key = s3_prefix + file
+                rel_path = os.path.relpath(local_path, output_dir)
+                s3_key = f"{s3_prefix}{rel_path}"
                 with open(local_path, "rb") as f:
                     s3.upload_fileobj(f, BUCKET_NAME, s3_key)
                 logger.debug(f"📤 Uploaded segment: {s3_key}")
 
-        logger.info(f"[Logic] ✅ Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}output.m3u8")
+        logger.info(f"[Logic] ✅ Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
         # send_status(video_id, "success", 100)
         publish_progress(video_id, "success", 100)
 
@@ -123,7 +143,7 @@ def transcode_video(filename: str) -> dict:
 
         # return {
         #     "videoId": video_id,
-        #     "m3u8": f"{s3_prefix}output.m3u8",
+        #     "m3u8": f"{s3_prefix}master.m3u8",
         #     "status": "success",
         #     "progress": 100
         # }
