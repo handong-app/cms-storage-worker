@@ -116,7 +116,7 @@ def transcode_video(filename: str) -> dict:
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
 
-        logger.info("🎞️ FFmpeg to HLS conversion complete")
+        logger.info("🎞️  FFmpeg to HLS conversion complete")
 
         renditions = {
             "480p": {
