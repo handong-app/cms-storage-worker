@@ -8,6 +8,6 @@ celery_app = Celery(
     backend=EnvVariables.CELERY_RESULT_BACKEND,
 )
 
-from src.tasks import video_tasks
+from src.tasks import transcode_video_task
 
 celery_app.autodiscover_tasks(["src.tasks"])
