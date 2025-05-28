@@ -3,6 +3,8 @@ import shutil
 import os
 import re
 
+from botocore.exceptions import ClientError
+
 from src.core.s3 import s3, BUCKET_NAME
 from src.utils.logging_utils import setup_logger
 from src.notifiers.redis_notifier import publish_progress
@@ -31,7 +33,7 @@ def get_duration(input_path: str) -> float:
     try:
         return float(result.stdout.strip())
     except ValueError:
-        logger.warning(f"[Logic] ⚠️ Failed to get duration from ffprobe: {result.stdout}")
+        logger.warning(f"[Logic] ⚠️  Failed to get duration from ffprobe: {result.stdout}")
         return 1.0  # fallback to avoid division by zero
 
 
@@ -45,7 +47,7 @@ def transcode_video(filename: str) -> dict:
         filename (str): S3의 원본 영상 경로 (예: original/1234-abc.mp4)
 
     Returns:
-        dict: 트랜스코딩 완료 정보 (videoId, m3u8 위치, 상태, 진행률)
+        void
     """
 
     logger.info(f"[Logic] Starting transcoding: {filename}")
@@ -56,30 +58,42 @@ def transcode_video(filename: str) -> dict:
 
     input_path = os.path.join(tmp_dir, filename.rsplit("/", 1)[-1])
     output_dir = os.path.join(tmp_dir, "hls")
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "480p"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "1080p"), exist_ok=True)
 
-    # send_status(video_id, "in_progress", 0)
     publish_progress(video_id, "in_progress", 0)
 
     try:
-        with open(input_path, "wb") as f:
-            s3.download_fileobj(BUCKET_NAME, filename, f)
-        logger.info(f"📥 Downloaded {filename} to {input_path}")
+        try:
+            with open(input_path, "wb") as f:
+                s3.download_fileobj(BUCKET_NAME, filename, f)
+            logger.info(f"📥  Downloaded {filename} to {input_path}")
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                logger.warning(f"[Logic] ❌  S3 object not found: {filename}")
+                publish_progress(video_id, "failed", 0)
+            raise e
 
         duration = get_duration(input_path)
 
         if duration <= 1.0:
-            logger.warning(f"[Logic] ⚠️ Video duration fallback to 1.0. May cause inaccurate progress reporting.")
+            logger.warning(f"[Logic] ⚠️  Video duration fallback to 1.0. May cause inaccurate progress reporting.")
 
         # FFmpeg HLS 변환
         output_m3u8 = os.path.join(output_dir, "output.m3u8")
         ffmpeg_cmd = [
-            "ffmpeg", "-y",  # 덮어쓰기 허용
-            "-i", input_path,
-            "-profile:v", "baseline", "-level", "3.0",
-            "-start_number", "0",
-            "-hls_time", "10", "-hls_list_size", "0", "-f", "hls",
-            output_m3u8
+            "ffmpeg", "-y", "-i", input_path,
+            "-filter_complex", "[0:v]split=2[v1][v2];[v1]scale=w=854:h=480[v1out];[v2]scale=w=1920:h=1080[v2out]",
+            "-map", "[v1out]", "-c:v:0", "libx264", "-b:v:0", "1400k",
+            "-map", "a:0", "-c:a:0", "aac",
+            "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
+            "-hls_segment_filename", os.path.join(output_dir, "480p", "segment_%03d.ts"),
+            os.path.join(output_dir, "480p", "output.m3u8"),
+            "-map", "[v2out]", "-c:v:1", "libx264", "-b:v:1", "5000k",
+            "-map", "a:0", "-c:a:1", "aac",
+            "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
+            "-hls_segment_filename", os.path.join(output_dir, "1080p", "segment_%03d.ts"),
+            os.path.join(output_dir, "1080p", "output.m3u8")
         ]
 
         # Popen 으로 진행률 트래킹
@@ -95,7 +109,6 @@ def transcode_video(filename: str) -> dict:
                 progress = int(min(seconds / duration * 100, 100))
                 # 진행 상황에 변동이 있을 때만 전송
                 if progress > last_progress:
-                    # send_status(video_id, "in_progress", progress)
                     publish_progress(video_id, "in_progress", progress)
                     last_progress = progress
 
@@ -103,38 +116,59 @@ def transcode_video(filename: str) -> dict:
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
 
-        logger.info("🎞️ FFmpeg to HLS conversion complete")
+        logger.info("🎞️  FFmpeg to HLS conversion complete")
+
+        renditions = {
+            "480p": {
+                "bandwidth": 1400000,
+                "resolution": "854x480"
+            },
+            "1080p": {
+                "bandwidth": 5000000,
+                "resolution": "1920x1080"
+            },
+        }
+
+        lines = ["#EXTM3U"]
+        for label, props in renditions.items():
+            lines.append(f"#EXT-X-STREAM-INF:BANDWIDTH={props['bandwidth']},RESOLUTION={props['resolution']}")
+            lines.append(f"{label}/output.m3u8")
+
+        master_m3u8 = "\n".join(lines)
+
+        with open(os.path.join(output_dir, "master.m3u8"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(master_m3u8)
+
 
         # S3에 청크들 업로드
         s3_prefix = f"hls/{video_id}/"
         for root, _, files in os.walk(output_dir):
             for file in files:
                 local_path = os.path.join(root, file)
-                s3_key = s3_prefix + file
+                rel_path = os.path.relpath(local_path, output_dir)
+                s3_key = f"{s3_prefix}{rel_path}"
                 with open(local_path, "rb") as f:
                     s3.upload_fileobj(f, BUCKET_NAME, s3_key)
-                logger.debug(f"📤 Uploaded segment: {s3_key}")
+                logger.debug(f"📤  Uploaded segment: {s3_key}")
 
-        logger.info(f"[Logic] ✅ Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}output.m3u8")
-        # send_status(video_id, "success", 100)
+        logger.info(f"[Logic] ✅  Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
         publish_progress(video_id, "success", 100)
 
         success = True
 
-        # return {
-        #     "videoId": video_id,
-        #     "m3u8": f"{s3_prefix}output.m3u8",
-        #     "status": "success",
-        #     "progress": 100
-        # }
+        return {
+            "videoId": video_id,
+            "m3u8": f"{s3_prefix}master.m3u8",
+            "status": "success",
+            "progress": 100
+        }
 
     except Exception as e:
         if not locals().get("success"):
-            logger.exception(f"[Logic] ❌ Transcoding failed: {e}")
-            # send_status(video_id, "failed", 0)
+            logger.exception(f"[Logic] ❌  Transcoding failed: {e}")
             publish_progress(video_id, "failed", 0)
         raise e
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        logger.info(f"[Logic] 🧹 Cleaned up: {tmp_dir}")
+        logger.info(f"[Logic] 🧹  Cleaned up: {tmp_dir}")

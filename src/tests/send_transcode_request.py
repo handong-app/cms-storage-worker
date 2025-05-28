@@ -7,7 +7,8 @@ logger = setup_logger(__name__)
 
 def main():
     file_type = "video"
-    filename = "1748193451965-cap-flow.mp4"
+    # filename = "1748191347517-cap-ucc.mp4"
+    filename = "wak.mp4"
 
     payload = {
         "file_type": file_type,
