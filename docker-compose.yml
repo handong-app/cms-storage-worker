@@ -1,4 +1,19 @@
 services:
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms-storage-consumer
+    working_dir: /
+    command: python src/consumer/request_consumer.py
+    volumes:
+      - ./src:/src
+    environment:
+      - PYTHONPATH=/
+    depends_on:
+      - rabbitmq
+      - redis
+
   worker:
     env_file:
       - .env
@@ -31,22 +46,3 @@ services:
     container_name: redis
     ports:
       - 6379:6379
-
-#  fastapi:
-  #    env_file:
-  #      - .env
-  #    build:
-  #      context: .
-  #      dockerfile: Dockerfile
-  #    container_name: fastapi
-  #    ports:
-  #      - 8000:8000
-  #    volumes:
-  #      - ./src:/app
-  #    working_dir: /
-  #    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-  #    environment:
-  #      - PYTHONPATH=/app
-  #    depends_on:
-  #      - rabbitmq
-  #      - redis
