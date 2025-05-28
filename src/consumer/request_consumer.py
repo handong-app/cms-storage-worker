@@ -27,17 +27,20 @@ def callback(ch, method, properties, body):
     try:
         message = json.loads(body)
         filename = message["filename"]
-        file_type = message["file_type"]
+        filetype = message["filetype"]
 
-        if filename:
-            if file_type == "video":
-                logger.info(f"[Consumer] 🎬  Dispatching Celery task for: {filename}")
-                transcode_video_task.delay(filename)
-            elif file_type == "audio":
-                logger.info(f"[Consumer] 🔊  Dispatching Celery task for: {filename}")
-                # TODO: Audio 트렌스코드 테스크 구현
+        if filetype:
+            if filename:
+                if filetype == "video":
+                    logger.info(f"[Consumer] 🎬  Dispatching Celery task for: {filename}")
+                    transcode_video_task.delay(filename)
+                elif filetype == "audio":
+                    logger.info(f"[Consumer] 🔊  Dispatching Celery task for: {filename}")
+                    # TODO: Audio 트렌스코드 테스크 구현
+            else:
+                logger.warning("[Consumer] 🫥  No filename in message")
         else:
-            logger.warning("[Consumer] 🫥  No filename in message")
+            logger.warning("[Consumer] 🤷‍♂️  No filetype in message")
 
 
 
