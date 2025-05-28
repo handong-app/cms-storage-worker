@@ -2,7 +2,8 @@ import subprocess
 import shutil
 import os
 import re
-import textwrap
+
+from botocore.exceptions import ClientError
 
 from src.core.s3 import s3, BUCKET_NAME
 from src.utils.logging_utils import setup_logger
@@ -32,7 +33,7 @@ def get_duration(input_path: str) -> float:
     try:
         return float(result.stdout.strip())
     except ValueError:
-        logger.warning(f"[Logic] ⚠️ Failed to get duration from ffprobe: {result.stdout}")
+        logger.warning(f"[Logic] ⚠️  Failed to get duration from ffprobe: {result.stdout}")
         return 1.0  # fallback to avoid division by zero
 
 
@@ -63,14 +64,20 @@ def transcode_video(filename: str) -> dict:
     publish_progress(video_id, "in_progress", 0)
 
     try:
-        with open(input_path, "wb") as f:
-            s3.download_fileobj(BUCKET_NAME, filename, f)
-        logger.info(f"📥 Downloaded {filename} to {input_path}")
+        try:
+            with open(input_path, "wb") as f:
+                s3.download_fileobj(BUCKET_NAME, filename, f)
+            logger.info(f"📥  Downloaded {filename} to {input_path}")
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                logger.warning(f"[Logic] ❌  S3 object not found: {filename}")
+                publish_progress(video_id, "failed", 0)
+            raise e
 
         duration = get_duration(input_path)
 
         if duration <= 1.0:
-            logger.warning(f"[Logic] ⚠️ Video duration fallback to 1.0. May cause inaccurate progress reporting.")
+            logger.warning(f"[Logic] ⚠️  Video duration fallback to 1.0. May cause inaccurate progress reporting.")
 
         # FFmpeg HLS 변환
         output_m3u8 = os.path.join(output_dir, "output.m3u8")
@@ -142,9 +149,9 @@ def transcode_video(filename: str) -> dict:
                 s3_key = f"{s3_prefix}{rel_path}"
                 with open(local_path, "rb") as f:
                     s3.upload_fileobj(f, BUCKET_NAME, s3_key)
-                logger.debug(f"📤 Uploaded segment: {s3_key}")
+                logger.debug(f"📤  Uploaded segment: {s3_key}")
 
-        logger.info(f"[Logic] ✅ Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
+        logger.info(f"[Logic] ✅  Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
         publish_progress(video_id, "success", 100)
 
         success = True
@@ -158,10 +165,10 @@ def transcode_video(filename: str) -> dict:
 
     except Exception as e:
         if not locals().get("success"):
-            logger.exception(f"[Logic] ❌ Transcoding failed: {e}")
+            logger.exception(f"[Logic] ❌  Transcoding failed: {e}")
             publish_progress(video_id, "failed", 0)
         raise e
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        logger.info(f"[Logic] 🧹 Cleaned up: {tmp_dir}")
+        logger.info(f"[Logic] 🧹  Cleaned up: {tmp_dir}")
