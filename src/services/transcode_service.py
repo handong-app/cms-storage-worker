@@ -111,15 +111,25 @@ def transcode_video(filename: str) -> dict:
 
         logger.info("🎞️ FFmpeg to HLS conversion complete")
 
-        master_m3u8 = textwrap.dedent("""\
-            #EXTM3U
-            #EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=854x480
-            480p/output.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
-            1080p/output.m3u8
-        """)
+        renditions = {
+            "480p": {
+                "bandwidth": 1400000,
+                "resolution": "854x480"
+            },
+            "1080p": {
+                "bandwidth": 5000000,
+                "resolution": "1920x1080"
+            },
+        }
 
-        with open(os.path.join(output_dir, "master.m3u8"), "w") as f:
+        lines = ["#EXTM3U"]
+        for label, props in renditions.items():
+            lines.append(f"#EXT-X-STREAM-INF:BANDWIDTH={props['bandwidth']},RESOLUTION={props['resolution']}")
+            lines.append(f"{label}/output.m3u8")
+
+        master_m3u8 = "\n".join(lines)
+
+        with open(os.path.join(output_dir, "master.m3u8"), "w", encoding="utf-8", newline="\n") as f:
             f.write(master_m3u8)
 
 
