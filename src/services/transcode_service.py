@@ -59,7 +59,6 @@ def transcode_video(filename: str) -> dict:
     os.makedirs(os.path.join(output_dir, "480p"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "1080p"), exist_ok=True)
 
-    # send_status(video_id, "in_progress", 0)
     publish_progress(video_id, "in_progress", 0)
 
     try:
@@ -102,7 +101,6 @@ def transcode_video(filename: str) -> dict:
                 progress = int(min(seconds / duration * 100, 100))
                 # 진행 상황에 변동이 있을 때만 전송
                 if progress > last_progress:
-                    # send_status(video_id, "in_progress", progress)
                     publish_progress(video_id, "in_progress", progress)
                     last_progress = progress
 
@@ -136,7 +134,6 @@ def transcode_video(filename: str) -> dict:
                 logger.debug(f"📤 Uploaded segment: {s3_key}")
 
         logger.info(f"[Logic] ✅ Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
-        # send_status(video_id, "success", 100)
         publish_progress(video_id, "success", 100)
 
         success = True
@@ -151,7 +148,6 @@ def transcode_video(filename: str) -> dict:
     except Exception as e:
         if not locals().get("success"):
             logger.exception(f"[Logic] ❌ Transcoding failed: {e}")
-            # send_status(video_id, "failed", 0)
             publish_progress(video_id, "failed", 0)
         raise e
 
