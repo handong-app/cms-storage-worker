@@ -1,26 +1,19 @@
-import json
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class EnvVariables:
-    API_PORT = os.getenv('API_PORT')
-
-    # DB
-    # DB_HOST = os.getenv("DB_HOST")
-    # DB_NAME = os.getenv("DB_NAME")
-    # DB_USERNAME = os.getenv("DB_USERNAME")
-    # DB_PASSWORD = os.getenv("DB_PASSWORD")
-    # DB_CLASSNAME = os.getenv("DB_CLASSNAME")
-    # DB_PORT = os.getenv("DB_PORT")
-
     # S3 config
     ACCESS_KEY_ID = os.getenv('ACCESS_KEY_ID')
     SECRET_ACCESS_KEY = os.getenv('SECRET_ACCESS_KEY')
     ENDPOINT = os.getenv('ENDPOINT')
     S3_FORCE_PATH_STYLE = os.getenv('S3_FORCE_PATH_STYLE')
     SIGNATURE_VERSION = os.getenv('SIGNATURE_VERSION')
+
+    # Celery + RabbitMQ
+    RABBITMQ_URL: str = "amqp://guest:guest@rabbitmq:5672//"
+    CELERY_RESULT_BACKEND: str = "rpc://"
 
     @staticmethod
     def get_routes_by_prefix(prefix):

@@ -1,5 +1,5 @@
 import boto3
-from app.core.config import EnvVariables
+from src.core.config import EnvVariables
 
 s3 = boto3.client(
     's3',

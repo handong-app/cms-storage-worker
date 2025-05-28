@@ -1,0 +1,52 @@
+services:
+  worker:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cms-storage-worker
+    working_dir: /
+    command: celery -A src.worker.celery_worker.celery_app worker --loglevel=info
+    volumes:
+      - ./src:/src
+    environment:
+      - PYTHONPATH=/src
+    depends_on:
+      - rabbitmq
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672      # AMQP 포트
+      - 15672:15672    # 웹 UI 포트
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - 6379:6379
+
+#  fastapi:
+  #    env_file:
+  #      - .env
+  #    build:
+  #      context: .
+  #      dockerfile: Dockerfile
+  #    container_name: fastapi
+  #    ports:
+  #      - 8000:8000
+  #    volumes:
+  #      - ./src:/app
+  #    working_dir: /
+  #    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  #    environment:
+  #      - PYTHONPATH=/app
+  #    depends_on:
+  #      - rabbitmq
+  #      - redis
