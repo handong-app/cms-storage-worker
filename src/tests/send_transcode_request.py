@@ -1,7 +1,7 @@
 import pika
 import json
 from src.core.config import EnvVariables
-from src.util.logging_utils import setup_logger
+from src.utils.logging_utils import setup_logger
 
 logger = setup_logger(__name__)
 
