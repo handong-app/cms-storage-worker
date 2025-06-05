@@ -113,7 +113,7 @@ def transcode_video(filename: str) -> dict:
                     last_progress = progress
 
         process.wait()
-        if process.returncode != 0:
+        if process.returncode != 0: 
             raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
 
         logger.info("🎞️  FFmpeg to HLS conversion complete")
@@ -141,7 +141,7 @@ def transcode_video(filename: str) -> dict:
 
 
         # S3에 청크들 업로드
-        s3_prefix = f"hls/{video_id}/"
+        s3_prefix = f"/node_file/video/{video_id}/"
         for root, _, files in os.walk(output_dir):
             for file in files:
                 local_path = os.path.join(root, file)
