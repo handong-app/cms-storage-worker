@@ -6,6 +6,7 @@ import re
 from botocore.exceptions import ClientError
 
 from src.core.s3 import s3, BUCKET_NAME
+from src.notifiers.rabbitmq_notifier import send_status
 from src.utils.logging_utils import setup_logger
 from src.notifiers.redis_notifier import publish_progress
 
@@ -85,37 +86,38 @@ def transcode_video(filename: str) -> dict:
             "ffmpeg", "-y", "-i", input_path,
             "-filter_complex", "[0:v]split=2[v1][v2];[v1]scale=w=854:h=480[v1out];[v2]scale=w=1920:h=1080[v2out]",
             "-map", "[v1out]", "-c:v:0", "libx264", "-b:v:0", "1400k",
-            "-map", "a:0", "-c:a:0", "aac",
+            "-map", "a:0?", "-c:a:0", "aac",
             "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
             "-hls_segment_filename", os.path.join(output_dir, "480p", "segment_%03d.ts"),
             os.path.join(output_dir, "480p", "output.m3u8"),
             "-map", "[v2out]", "-c:v:1", "libx264", "-b:v:1", "5000k",
-            "-map", "a:0", "-c:a:1", "aac",
+            "-map", "a:0?", "-c:a:1", "aac",
             "-f", "hls", "-hls_time", "10", "-hls_playlist_type", "vod",
             "-hls_segment_filename", os.path.join(output_dir, "1080p", "segment_%03d.ts"),
             os.path.join(output_dir, "1080p", "output.m3u8")
         ]
 
         # Popen 으로 진행률 트래킹
+        # FFmpeg 실행
         process = subprocess.Popen(ffmpeg_cmd, stderr=subprocess.PIPE, universal_newlines=True)
 
         last_progress = -1
-        # FFmpeg는 진행률을 stderr에 time=HH:MM:SS.ss 형식으로 출력함
-        for line in process.stderr:
-            match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
-            if match:
-                h, m, s = map(float, match.groups())
-                seconds = h * 3600 + m * 60 + s
-                progress = int(min(seconds / duration * 100, 100))
-                # 진행 상황에 변동이 있을 때만 전송
-                if progress > last_progress:
-                    publish_progress(video_id, "in_progress", progress)
-                    last_progress = progress
+        with process.stderr as stderr:  # 안전하게 stderr 열고 닫기
+            for line in stderr:
+                match = re.search(r"time=(\d+):(\d+):(\d+\.\d+)", line)
+                if match:
+                    h, m, s = map(float, match.groups())
+                    seconds = h * 3600 + m * 60 + s
+                    progress = int(min(seconds / duration * 100, 100))
+                    # 진행 상황에 변동이 있을 때만 전송
+                    if progress > last_progress:
+                        publish_progress(video_id, "in_progress", progress)
+                        last_progress = progress
 
+        # 실행 종료 확인
         process.wait()
-        if process.returncode != 0: 
+        if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
-
         logger.info("🎞️  FFmpeg to HLS conversion complete")
 
         renditions = {
@@ -153,6 +155,7 @@ def transcode_video(filename: str) -> dict:
 
         logger.info(f"[Logic] ✅  Transcoding complete: s3://{BUCKET_NAME}/{s3_prefix}master.m3u8")
         publish_progress(video_id, "success", 100)
+        send_status(video_id, "success", 100)
 
         success = True
 
@@ -167,6 +170,7 @@ def transcode_video(filename: str) -> dict:
         if not locals().get("success"):
             logger.exception(f"[Logic] ❌  Transcoding failed: {e}")
             publish_progress(video_id, "failed", 0)
+            send_status(video_id, "failed", 100)
         raise e
 
     finally:
