@@ -63,7 +63,7 @@ def transcode_video(filename: str) -> dict:
     os.makedirs(os.path.join(output_dir, "1080p"), exist_ok=True)
 
     publish_progress(video_id, "in_progress", 0)
-
+    send_status(video_id, "in_progress", 0)
     try:
         try:
             with open(input_path, "wb") as f:
@@ -73,6 +73,8 @@ def transcode_video(filename: str) -> dict:
             if e.response["Error"]["Code"] == "404":
                 logger.warning(f"[Logic] ❌  S3 object not found: {filename}")
                 publish_progress(video_id, "failed", 0)
+                send_status(video_id, "failed", 0)
+
             raise e
 
         duration = get_duration(input_path)
@@ -112,6 +114,7 @@ def transcode_video(filename: str) -> dict:
                     # 진행 상황에 변동이 있을 때만 전송
                     if progress > last_progress:
                         publish_progress(video_id, "in_progress", progress)
+                        send_status(video_id, "in_progress", progress)
                         last_progress = progress
 
         # 실행 종료 확인
