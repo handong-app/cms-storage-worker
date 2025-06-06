@@ -1,4 +1,13 @@
-# 🛡️ ![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Container](https://img.shields.io/badge/Container-Docker-blue?logo=docker)
+![Python](https://img.shields.io/badge/Worker-Python%203.12-yellow?logo=python)
+![Celery](https://img.shields.io/badge/Celery-5.3.1-brightgreen?logo=celery)
+![RabbitMQ](https://img.shields.io/badge/Queue-RabbitMQ-FF6600?logo=rabbitmq)
+![Redis](https://img.shields.io/badge/Redis-7.x-red?logo=redis)
+![FFmpeg](https://img.shields.io/badge/Transcoder-FFmpeg-black?logo=ffmpeg)
+![Storage](https://img.shields.io/badge/S3%20(MinIO)-storage-yellow?logo=amazon-s3)
+![Infisical](https://img.shields.io/badge/Secrets-Infisical-2B90B6)
 
 # 📦 CMS Transcode Worker
 
