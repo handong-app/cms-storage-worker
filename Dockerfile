@@ -14,6 +14,6 @@ COPY ./requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 
-#COPY ./src /src
+COPY ./src ./src
 
 CMD ["celery", "-A", "src.worker.celery_worker.celery_app", "worker", "--loglevel=info"]
