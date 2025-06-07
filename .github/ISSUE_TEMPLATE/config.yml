@@ -1,0 +1,9 @@
+blank_issues_enabled: false  # "빈 이슈 만들기" 버튼 비활성화
+
+contact_links:
+  - name: 🔗 CMS 관련 리포
+    url: https://github.com/orgs/handong-app/repositories?q=cms
+    about: "CMS 프로젝트 관련 리포지토리 목록 입니다."
+  - name: 📑 CMS Project
+    url: https://github.com/orgs/handong-app/projects/5/views/3
+    about: "CMS 프로젝트를 관리하는 프로젝트 보드입니다."
