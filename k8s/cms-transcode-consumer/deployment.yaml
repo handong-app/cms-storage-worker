@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-transcode-consumer
+  namespace: cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-transcode-consumer
+  template:
+    metadata:
+      labels:
+        app: cms-transcode-consumer
+    spec:
+      containers:
+      - name: cms-transcode-consumer
+        image: ghcr.io/callein/cms-transcode-consumer:latest
+        command: ["python", "src/consumer/request_consumer.py"]
+        envFrom:
+          - secretRef:
+              name: cms-transcode-env
+        env:
+          - name: PYTHONPATH
+            value: "/src"
