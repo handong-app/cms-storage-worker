@@ -14,11 +14,13 @@ class EnvVariables:
     # Celery + RabbitMQ
     EXTERN_RABBITMQ_HOST = os.getenv('EXTERN_RABBITMQ_HOST')
     EXTERN_RABBITMQ_PORT = os.getenv('EXTERN_RABBITMQ_PORT')
+    EXTERN_RABBITMQ_URL = os.getenv('EXTERN_RABBITMQ_URL')
     EXTERN_RABBITMQ_USER = os.getenv('EXTERN_RABBITMQ_USER')
     EXTERN_RABBITMQ_PASSWORD = os.getenv('EXTERN_RABBITMQ_PASSWORD')
     RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
     RABBITMQ_URL: str = os.getenv('RABBITMQ_URL', "amqp://guest:guest@rabbitmq:5672//")
     CELERY_RESULT_BACKEND: str = os.getenv('CELERY_RESULT_BACKEND', "rpc://")
+    CELERY_TRANSCODE_QUEUE = os.getenv('CELERY_TRANSCODE_QUEUE')
     TRANSCODE_STATUS_QUEUE = os.getenv('TRANSCODE_STATUS_QUEUE', "transcode.status")
     TRANSCODE_REQUEST_QUEUE = os.getenv('TRANSCODE_REQUEST_QUEUE', "transcode.request")
 
