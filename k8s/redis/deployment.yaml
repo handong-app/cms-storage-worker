@@ -16,5 +16,16 @@ spec:
       containers:
       - name: redis
         image: redis:7
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+          allowPrivilegeEscalation: false
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
         ports:
         - containerPort: 6379
