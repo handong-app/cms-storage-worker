@@ -15,11 +15,28 @@ spec:
     spec:
       containers:
       - name: cms-transcode-worker
-        image: ghcr.io/callein/cms-transcode-worker:latest
+        image: ghcr.io/callein/cms-transcode-worker:v1.0.0
         command: [ "celery", "-A", "src.worker.celery_worker.celery_app", "worker", "--loglevel=info", "--concurrency=1", "-Q", "celery.transcode" ]
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command: ["celery", "-A", "src.worker.celery_worker.celery_app", "inspect", "ping"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
         envFrom:
-          - secretRef:
-              name: cms-transcode-env
+        - secretRef:
+            name: cms-transcode-env
         env:
-          - name: PYTHONPATH
-            value: "/src"
+        - name: PYTHONPATH
+          value: "/src"

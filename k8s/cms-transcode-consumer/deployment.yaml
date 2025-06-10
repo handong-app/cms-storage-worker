@@ -15,8 +15,25 @@ spec:
     spec:
       containers:
       - name: cms-transcode-consumer
-        image: ghcr.io/callein/cms-transcode-consumer:latest
+        image: ghcr.io/callein/cms-transcode-consumer:v1.0.0
         command: ["python", "src/consumer/request_consumer.py"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command: ["python", "src/consumer/request_consumer.py", "--healthcheck"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
         envFrom:
           - secretRef:
               name: cms-transcode-env
