@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cms-transcode-worker
+  namespace: cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cms-transcode-worker
+  template:
+    metadata:
+      labels:
+        app: cms-transcode-worker
+    spec:
+      containers:
+      - name: cms-transcode-worker
+        image: ghcr.io/callein/cms-transcode-worker:latest
+        command: [ "celery", "-A", "src.worker.celery_worker.celery_app", "worker", "--loglevel=info", "--concurrency=1", "-Q", "celery.transcode" ]
+        envFrom:
+          - secretRef:
+              name: cms-transcode-env
+        env:
+          - name: PYTHONPATH
+            value: "/src"

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-transcode-config
+  namespace: cms
+data:
+  EXAMPLE_ENV: "value"

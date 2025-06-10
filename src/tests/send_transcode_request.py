@@ -16,7 +16,7 @@ def main():
     }
 
     logger.info("[Producer] Connecting to RabbitMQ...")
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=EnvVariables.TEST_RABBITMQ_HOST))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=EnvVariables.EXTERN_RABBITMQ_HOST))
     channel = connection.channel()
 
     queue_name = EnvVariables.TEST_TRANSCODE_REQUEST_QUEUE
