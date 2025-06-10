@@ -8,16 +8,16 @@ from src.core.config import EnvVariables
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 redis_client = redis.Redis(
-    host=EnvVariables.TEST_REDIS_HOST,
-    port=EnvVariables.TEST_REDIS_PORT,
+    host=EnvVariables.REDIS_HOST,
+    port=EnvVariables.REDIS_PORT,
     decode_responses=True
 )
 
 def main():
     pubsub = redis_client.pubsub()
-    pubsub.subscribe(EnvVariables.TEST_REDIS_CHANNEL)
+    pubsub.subscribe(EnvVariables.REDIS_CHANNEL)
 
-    print(f"✅ Subscribed to Redis channel: {EnvVariables.TEST_REDIS_CHANNEL}")
+    print(f"✅ Subscribed to Redis channel: {EnvVariables.REDIS_CHANNEL}")
     print("📡 Waiting for messages...\n")
 
     for message in pubsub.listen():
