@@ -13,7 +13,6 @@ services:
     environment:
       - PYTHONPATH=/
     depends_on:
-      - rabbitmq
       - redis
 
   worker:
@@ -30,18 +29,7 @@ services:
     environment:
       - PYTHONPATH=/src
     depends_on:
-      - rabbitmq
       - redis
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    ports:
-      - 5672:5672      # AMQP 포트
-      - 15672:15672    # 웹 UI 포트
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
 
   redis:
     image: redis:7
