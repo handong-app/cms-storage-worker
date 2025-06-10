@@ -1,7 +1,7 @@
 import pika
 import json
 from src.core.config import EnvVariables
-
+from pika.exceptions import StreamLostError
 
 _connection = None
 _channel = None
@@ -28,21 +28,36 @@ def _get_channel():
 
 
 def send_status(video_id: str, status: str, progress: int = 0):
-    channel = _get_channel()
-
+    global _connection, _channel
     payload = {
         "videoId": video_id,
         "status": status,
         "progress": progress
     }
 
-    channel.basic_publish(
-        exchange='',
-        routing_key=EnvVariables.TRANSCODE_STATUS_QUEUE,
-        body=json.dumps(payload),
-        properties=pika.BasicProperties(
-            delivery_mode=2  # 메시지를 영구적으로 만듦
-        )
-    )
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            channel = _get_channel()
+            channel.basic_publish(
+                exchange='',
+                routing_key=EnvVariables.TRANSCODE_STATUS_QUEUE,
+                body=json.dumps(payload),
+                properties=pika.BasicProperties(
+                    delivery_mode=2
+                )
+            )
+            print(f"✈️ Sent on attempt {attempt}: {payload}")
+            break
 
-    print(payload)
+        except StreamLostError as e:
+            print(f"⚠️ Attempt {attempt}: StreamLostError (EOF). Reconnecting...")
+            _connection = None
+            _channel = None
+            if attempt == max_retries:
+                print("❌ Max retries reached. Could not send message.")
+                raise e
+
+        except Exception as e:
+            print(f"❌ Attempt {attempt}: Unexpected error: {e}")
+            raise e
