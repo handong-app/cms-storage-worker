@@ -85,7 +85,7 @@ docker-compose up --build
   - 변환 중 **Redis**로 진행률을 실시간 업데이트합니다.
   - 진행률과 상태는 **Transcode.Status MQ**로 발행됩니다.
   > `transcode_service` 에서 redis 와 rabbitMQ 둘 다 사용해 진행률을 보내주고 있습니다.   
-  > 사용하지 않는 Notifire 는 주석처리해도 무관합니다.
+  > 사용하지 않는 Notifier 는 주석처리해도 무관합니다.
 
 4️⃣ **진행 상태 전송 → CMS BE**  
 - CMS BE는 **Transcode.Status MQ**를 구독(SUB)하여 트랜스코딩의 상태 및 진행률을 실시간으로 확인합니다.
